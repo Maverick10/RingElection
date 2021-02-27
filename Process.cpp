@@ -1,29 +1,17 @@
 #include "Process.h"
 
-//Process::Process(bool b) { // debugging
-//	this->pid = (rand() % MAXPID) + 1;
-//	std::cout << "PID = " << pid << std::endl;
-//	this->initShm();
-//
-//	// writeToShm(semAddress, pid, headShm);
-//	Head x = readFromShm(semAddress, headShm);
-//	std::cout << "Got value " << x.id << " " << x.next << std::endl;
-//}
-
 Process::Process() {
 	this->pid = (rand() % MAXPID) + 1;
 	this->isHead = 0;
+	this->lastHeartbeatSender = -1;
+	this->lastHeartbeatReceivedTimestamp = this->lastHeartbeatSentTimestamp = 0;
 	std::cout << "PID = " << pid << std::endl;
 	this->initShm();
-
-//	Head h(this->pid, this->pid);
-//	writeToShm(semAddress, h, headShm);
 
 	this->enterRing();
 	printf("entered ring\n");
 	this->lifeLoop();
 
-//	std::cout << "Got value " << head.id << " " << head.next << std::endl;
 }
 
 Process::~Process() {
@@ -50,7 +38,7 @@ void Process::appointAsHead(int next) {
 	this->next = next;
 }
 
-void Process::sendChangeNextMsg(int first, int mid, int last) { // mid.next = last, first.next = mid
+void Process::sendChangeNext(int first, int mid, int last) { // mid.next = last, first.next = mid
 	Message *msgToMid = new Message();
 	msgToMid->mtype = MSGTYPE_CHANGENEXT;
 	sprintf(msgToMid->mtext, "%d %lld %d", this->pid, getCurTime(), last);
@@ -70,23 +58,63 @@ void Process::enterRing() {
 	} else {
 		if (this->pingProcess(head.id)) {
 			printf("Process %d is alive and well\n", head.id);
-			this->sendChangeNextMsg(head.id, this->pid, head.next);	// this->next = head.next, head.id.next = this->pid
+			this->sendChangeNext(head.id, this->pid, head.next);// this->next = head.next, head.id.next = this->pid
 		} else if (this->pingProcess(head.next)) {// head is dead, must send a message to ring that this node is dead
 			printf("Process %d is alive and well\n", head.next);
 			this->appointAsHead(head.next);
-			// TODO: cur process is new head
 		} else {
 			puts("All dead");
 			this->appointAsHead(this->pid);
 		}
 	}
-//	printf("exiting enterRing()");
+}
+
+void Process::sendHeartbeat() {
+	TIME curTime = getCurTime();
+	if (curTime - this->lastHeartbeatSentTimestamp > HEARTBEAT_SEND_GAP) {
+		Message *msg = new Message();
+		msg->mtype = MSGTYPE_HEARTBEAT;
+		sprintf(msg->mtext, "%d %lld", this->pid, curTime);
+		this->lastHeartbeatSentTimestamp = curTime;
+		sendMessage(this->next, msg);
+		delete msg;
+	}
 }
 
 void Process::lifeLoop() {
 	while (1) {
-		listenToQueue();
+		this->listenToQueue();
+//		sleep(1);	// debugging
+		this->sendHeartbeat();
 	}
+}
+
+void Process::receivePingRequest(Message *msg) {
+	int pingSender;
+	sscanf(msg->mtext, "%d", &pingSender);
+	Message *pingReply = new Message();
+	pingReply->mtype = MSGTYPE_PINGREPLY;
+	sprintf(pingReply->mtext, "%d %lld", this->pid, getCurTime());
+	sendMessage(pingSender, pingReply);
+	delete pingReply;
+}
+
+void Process::receiveChangeNext(Message *msg) {
+	int newNext;
+	sscanf(msg->mtext, "%d %d %d", &newNext, &newNext, &newNext);
+	this->next = newNext;
+	if (this->isHead)
+		this->appointAsHead(this->next);
+	printf("Changed next to process %d\n", this->next);
+}
+
+void Process::receiveHeartbeat(Message *msg) {
+	int sender;
+	TIME timestamp;
+	sscanf(msg->mtext, "%d %lld", &sender, &timestamp);
+	this->lastHeartbeatReceivedTimestamp = timestamp;
+	this->lastHeartbeatSender = sender;
+	printf("Received heartbeat from %d at %lld\n", sender, timestamp);
 }
 
 void Process::listenToQueue() {
@@ -97,28 +125,19 @@ void Process::listenToQueue() {
 		printf("Received %ld\n%s\n", msg->mtype, msg->mtext);
 		printf("msgrcv val is %d\n", val);
 		if (msg->mtype == MSGTYPE_PINGREQUEST) {
-			int pingSender;
-			sscanf(msg->mtext, "%d", &pingSender);
-			Message *pingReply = new Message();
-			pingReply->mtype = MSGTYPE_PINGREPLY;
-			sprintf(pingReply->mtext, "%d %lld", this->pid, getCurTime());
-			sendMessage(pingSender, pingReply);
-			delete pingReply;
+			receivePingRequest(msg);
 		} else if (msg->mtype == MSGTYPE_CHANGENEXT) {
-			int newNext;
-			sscanf(msg->mtext, "%d %d %d", &newNext, &newNext, &newNext);
-			this->next = newNext;
-			if (this->isHead)
-				this->appointAsHead(this->next);
-			printf("Changed next to process %d\n", this->next);
+			receiveChangeNext(msg);
+		} else if (msg->mtype == MSGTYPE_HEARTBEAT) {
+			receiveHeartbeat(msg);
 		}
 	}
-//		break;
 	delete msg;
 
 }
 
 bool Process::pingProcess(int pid) {
+	printf("Pinging pid %d\n", pid);
 	Message *msg = new Message();
 	msg->mtype = MSGTYPE_PINGREQUEST;
 	TIME msgTime = getCurTime();
@@ -127,17 +146,17 @@ bool Process::pingProcess(int pid) {
 	sendMessage(pid, msg);
 
 	while (getCurTime() - msgTime <= PING_TIMEOUT) {// wait till you receive a reply
+		printf("%lld %lld %d\n", getCurTime(), msgTime, PING_TIMEOUT);
 		int val = receiveMessage(this->pid, MSGTYPE_PINGREPLY, msg);
 		if (val >= 0) {	// reply received
 			printf("Received %ld\n%s\n", msg->mtype, msg->mtext);
 			printf("msgrcv val is %d\n", val);
 			int pingReplySender;
 			sscanf(msg->mtext, "%d", &pingReplySender);
-			if (pingReplySender == pid) // reply was successful
+			if (pingReplySender == pid)	// reply was successful
 				return 1;
 		}
 		sleep(1);
 	}
 	return 0;
-//	std::cout << "sent message to head to change next\n";
 }

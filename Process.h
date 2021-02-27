@@ -16,18 +16,25 @@ class Process {
 	Head *headShm; // shared memory segment to identify the head of the election ring
 	int semAddress;
 	bool isHead;
+	TIME lastHeartbeatReceivedTimestamp;
+	TIME lastHeartbeatSentTimestamp;
+	int lastHeartbeatSender;
 
 	void initShm();
 	void enterRing();
 	void listenToQueue();
 	bool pingProcess(int pid);
 	void appointAsHead(int next);
-	void sendChangeNextMsg(int first, int mid, int last);
 	void lifeLoop();
+
+	void sendChangeNext(int first, int mid, int last);
+	void sendHeartbeat();
+	void receivePingRequest(Message *msg);
+	void receiveChangeNext(Message *msg);
+	void receiveHeartbeat(Message *msg);
 
 public:
 	Process();
-//	Process(bool b); // debugging
 	~Process();
 	int getPid();
 };
