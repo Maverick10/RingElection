@@ -20,6 +20,9 @@ class Process {
 	TIME lastHeartbeatSentTimestamp;
 	TIME lastSentDeathNoteTimestamp;
 	int lastHeartbeatSender;
+	int coordinatorPid;
+	bool hasInitiatedElection;
+	bool hasSentVictory;
 
 	void initShm();
 	void enterRing();
@@ -28,14 +31,19 @@ class Process {
 	void appointAsHead(int next);
 	void lifeLoop();
 	bool isPrevProcessDead();
+	void initiateElection();
 
-	void sendChangeNext(int first, int mid, int last);
+	void sendChangeNext(int from, int to);
 	void sendHeartbeat();
 	void sendProcessDeath(int originalSender, TIME t, int deadProcess);
+	void sendElection(int initiator, int curWinner);
+	void sendVictory(int originalSender, int winner);
 	void receivePingRequest(Message *msg);
 	void receiveChangeNext(Message *msg);
 	void receiveHeartbeat(Message *msg);
 	void receiveProcessDeath(Message *msg);
+	void receiveElection(Message *msg);
+	void receiveVictory(Message *msg);
 
 public:
 	Process();

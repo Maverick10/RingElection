@@ -35,8 +35,8 @@ void sendMessage(int receiver, Message *msg) {
 		printf("failed to open message queue. return value = %d\n", msgqid);
 	}
 	int retVal = msgsnd(msgqid, msg, sizeof(msg->mtext), 0);
-	printf("return val from send is %d\n", retVal);
-	printf("message sent\n");
+//	printf("return val from send is %d\n", retVal);
+//	printf("message sent\n");
 }
 
 int receiveMessage(int receiver, int msgtype, Message *msg) {
