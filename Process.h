@@ -18,6 +18,7 @@ class Process {
 	bool isHead;
 	TIME lastHeartbeatReceivedTimestamp;
 	TIME lastHeartbeatSentTimestamp;
+	TIME lastSentDeathNoteTimestamp;
 	int lastHeartbeatSender;
 
 	void initShm();
@@ -26,12 +27,15 @@ class Process {
 	bool pingProcess(int pid);
 	void appointAsHead(int next);
 	void lifeLoop();
+	bool isPrevProcessDead();
 
 	void sendChangeNext(int first, int mid, int last);
 	void sendHeartbeat();
+	void sendProcessDeath(int originalSender, TIME t, int deadProcess);
 	void receivePingRequest(Message *msg);
 	void receiveChangeNext(Message *msg);
 	void receiveHeartbeat(Message *msg);
+	void receiveProcessDeath(Message *msg);
 
 public:
 	Process();

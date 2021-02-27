@@ -4,7 +4,8 @@ Process::Process() {
 	this->pid = (rand() % MAXPID) + 1;
 	this->isHead = 0;
 	this->lastHeartbeatSender = -1;
-	this->lastHeartbeatReceivedTimestamp = this->lastHeartbeatSentTimestamp = 0;
+	this->lastHeartbeatReceivedTimestamp = this->lastHeartbeatSentTimestamp =
+			this->lastSentDeathNoteTimestamp = 0;
 	std::cout << "PID = " << pid << std::endl;
 	this->initShm();
 
@@ -58,10 +59,11 @@ void Process::enterRing() {
 	} else {
 		if (this->pingProcess(head.id)) {
 			printf("Process %d is alive and well\n", head.id);
-			this->sendChangeNext(head.id, this->pid, head.next);// this->next = head.next, head.id.next = this->pid
-		} else if (this->pingProcess(head.next)) {// head is dead, must send a message to ring that this node is dead
+			this->sendChangeNext(head.id, this->pid, head.next); // this->next = head.next, head.id.next = this->pid
+		} else if (this->pingProcess(head.next)) { // head is dead, must send a message to ring that this node is dead
 			printf("Process %d is alive and well\n", head.next);
 			this->appointAsHead(head.next);
+			this->sendProcessDeath(this->pid, getCurTime(), head.id);
 		} else {
 			puts("All dead");
 			this->appointAsHead(this->pid);
@@ -81,11 +83,34 @@ void Process::sendHeartbeat() {
 	}
 }
 
+bool Process::isPrevProcessDead() {
+	return getCurTime() - this->lastHeartbeatReceivedTimestamp
+			> HEARTBEAT_TIMEOUT;
+}
+
+void Process::sendProcessDeath(int originalSender, TIME t, int deadProcess) {
+	Message *msg = new Message();
+	msg->mtype = MSGTYPE_PROCESSDEATH;
+	sprintf(msg->mtext, "%d %lld %d %d", this->pid, t, deadProcess,
+			originalSender);
+	sendMessage(this->next, msg);
+	delete msg;
+}
+
 void Process::lifeLoop() {
 	while (1) {
 		this->listenToQueue();
 //		sleep(1);	// debugging
 		this->sendHeartbeat();
+		if (this->isPrevProcessDead()) {
+			TIME timestamp = getCurTime();
+			if (timestamp - this->lastSentDeathNoteTimestamp
+					> DEATHNOTE_SEND_GAP) {
+				sendProcessDeath(this->pid, timestamp,
+						this->lastHeartbeatSender);
+				lastSentDeathNoteTimestamp = timestamp;
+			}
+		}
 	}
 }
 
@@ -117,6 +142,22 @@ void Process::receiveHeartbeat(Message *msg) {
 	printf("Received heartbeat from %d at %lld\n", sender, timestamp);
 }
 
+void Process::receiveProcessDeath(Message *msg) {
+	int sender, deadProcess, originalSender;
+	TIME timestamp;
+	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &deadProcess,
+			&originalSender);
+	printf("%d Received message from %d at %lld that process %d died\n",
+			this->pid, sender, timestamp, deadProcess);
+	if (this->next == deadProcess) 	// next process died, stop message
+		this->next = originalSender;
+	else if (this->pid != originalSender
+			&& getCurTime() - timestamp <= MSG_TIMEOUT) // relay message to next process, stop message if it took a full lap
+														// also timeout was added so that if for any reasons the message was not stopped by the original process
+														// or the preceding process to the dead one, this would stop it
+		this->sendProcessDeath(originalSender, timestamp, deadProcess);
+}
+
 void Process::listenToQueue() {
 
 	Message *msg = new Message();
@@ -124,13 +165,14 @@ void Process::listenToQueue() {
 	if (val >= 0) {	// received a message
 		printf("Received %ld\n%s\n", msg->mtype, msg->mtext);
 		printf("msgrcv val is %d\n", val);
-		if (msg->mtype == MSGTYPE_PINGREQUEST) {
-			receivePingRequest(msg);
-		} else if (msg->mtype == MSGTYPE_CHANGENEXT) {
-			receiveChangeNext(msg);
-		} else if (msg->mtype == MSGTYPE_HEARTBEAT) {
-			receiveHeartbeat(msg);
-		}
+		if (msg->mtype == MSGTYPE_PINGREQUEST)
+			this->receivePingRequest(msg);
+		else if (msg->mtype == MSGTYPE_CHANGENEXT)
+			this->receiveChangeNext(msg);
+		else if (msg->mtype == MSGTYPE_HEARTBEAT)
+			this->receiveHeartbeat(msg);
+		else if (msg->mtype == MSGTYPE_PROCESSDEATH)
+			this->receiveProcessDeath(msg);
 	}
 	delete msg;
 
@@ -146,7 +188,7 @@ bool Process::pingProcess(int pid) {
 	sendMessage(pid, msg);
 
 	while (getCurTime() - msgTime <= PING_TIMEOUT) {// wait till you receive a reply
-		printf("%lld %lld %d\n", getCurTime(), msgTime, PING_TIMEOUT);
+//		printf("%lld %lld %d\n", getCurTime(), msgTime, PING_TIMEOUT);
 		int val = receiveMessage(this->pid, MSGTYPE_PINGREPLY, msg);
 		if (val >= 0) {	// reply received
 			printf("Received %ld\n%s\n", msg->mtype, msg->mtext);
@@ -156,7 +198,7 @@ bool Process::pingProcess(int pid) {
 			if (pingReplySender == pid)	// reply was successful
 				return 1;
 		}
-		sleep(1);
+//		sleep(1);
 	}
 	return 0;
 }
