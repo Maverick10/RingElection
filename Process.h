@@ -15,10 +15,15 @@ class Process {
 	int next;
 	Head *headShm; // shared memory segment to identify the head of the election ring
 	int semAddress;
+	bool isHead;
+
 	void initShm();
 	void enterRing();
 	void listenToQueue();
 	bool pingProcess(int pid);
+	void appointAsHead(int next);
+	void sendChangeNextMsg(int first, int mid, int last);
+	void lifeLoop();
 
 public:
 	Process();
