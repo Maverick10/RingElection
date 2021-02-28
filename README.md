@@ -14,6 +14,7 @@
     - Navigate to the root directory.
     - `$ g++ *.cpp *.h -o main`
     - Running `$ ./main` will start a new process. You can have as many processes as you like. Just open a new terminal and type the same command `$ ./main`.
+    - You can stop any process by sending *SIGINT* signal to the terminal (CTRL+C in Unix).
 
 ### Who do I talk to? ###
 
