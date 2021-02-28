@@ -25,6 +25,14 @@ class Process {
 	bool hasInitiatedElection;// boolean of whether current process initiated election
 	bool hasSentVictory;// boolean of whether current process sent victory message
 
+	// data related params
+	bool hasStartedCounting;
+	bool hasReceivedCount;
+	bool hasSentData;
+	int dataReceivedCount;
+	int processCount;
+	TIME lastSendDataTimestamp;
+
 	// control methods
 	void initShm();
 	void enterRing();
@@ -41,12 +49,14 @@ class Process {
 	void sendProcessDeath(int originalSender, TIME t, int deadProcess);
 	void sendElection(int initiator, int curWinner);
 	void sendVictory(int originalSender, int winner);
+	void sendCount(int coordinator, int curCount);
 	void receivePingRequest(Message *msg);
 	void receiveChangeNext(Message *msg);
 	void receiveHeartbeat(Message *msg);
 	void receiveProcessDeath(Message *msg);
 	void receiveElection(Message *msg);
 	void receiveVictory(Message *msg);
+	void receiveCount(Message *msg);
 
 public:
 	Process();

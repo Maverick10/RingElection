@@ -3,7 +3,7 @@
 
 const int MAXPID = 1e6;
 
-const int MSGMAXSZ = 1024;// maximum size for message mtext used in message queues
+const int MSGMAXSZ = 1024; // maximum size for message mtext used in message queues
 
 const char *const HEADSHM_FTOK_PATH = "./Process.cpp";
 const int HEADSHM_FTOK_PROJID = 5007;
@@ -14,5 +14,6 @@ const int MSG_TIMEOUT = 15000; // to stop process death message from going aroun
 
 const int HEARTBEAT_SEND_GAP = 1000; // time between consecutive heartbeats sent
 const int DEATHNOTE_SEND_GAP = 1000; // time between consecutive death notes
+const int DATA_SEND_GAP = 20000; // time between consecutive data sent by coordinator
 
 #endif

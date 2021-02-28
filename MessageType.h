@@ -17,6 +17,8 @@
  * Election <SENDER> <TIMESTAMP> <INITIATOR> <CURWINNER>
  * -----------------------
  * Victory <SENDER> <TIMESTAMP> <ORIGINALSENDER> <COORDINATOR>
+ * -----------------------
+ * Count <SENDER> <TIMESTAMP> <COORDINATOR> <COUNT>
  */
 
 #define MSGTYPE_CHANGENEXT 1
@@ -26,5 +28,8 @@
 #define MSGTYPE_PROCESSDEATH 5
 #define MSGTYPE_ELECTION 6
 #define MSGTYPE_VICTORY 7
+#define MSGTYPE_COUNT 8
+#define MSGTYPE_DATA 9
+#define MSGTYPE_RESULT 10
 
 #endif /* MESSAGETYPE_H_ */

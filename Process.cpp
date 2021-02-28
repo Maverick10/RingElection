@@ -102,6 +102,8 @@ void Process::listenToQueue() {
 			this->receiveElection(msg);
 		else if (msg->mtype == MSGTYPE_VICTORY)
 			this->receiveVictory(msg);
+		else if (msg->mtype == MSGTYPE_COUNT)
+			this->receiveCount(msg);
 //		puts("");
 	}
 	delete msg;
@@ -188,6 +190,14 @@ void Process::lifeLoop() {
 
 					appointAsHead(this->pid);
 				}
+			}
+		}
+		if (this->pid == this->coordinatorPid) {
+			if (!this->hasStartedCounting
+					&& getCurTime() - this->lastSendDataTimestamp
+							> DATA_SEND_GAP) {
+				this->lastSendDataTimestamp = getCurTime();
+				sendCount(this->pid, 0);
 			}
 		}
 	}
@@ -308,6 +318,16 @@ void Process::sendVictory(int originalSender, int winner) {
 	sendMessage(this->next, msg);
 }
 
+// TODO: Write documentation
+
+void Process::sendCount(int coordinator, int curCount) {
+	Message *msg = new Message();
+	msg->mtype = MSGTYPE_COUNT;
+	sprintf(msg->mtext, "%d %lld %d %d", this->pid, getCurTime(), coordinator,
+			curCount);
+	sendMessage(this->next, msg);
+}
+
 /*
  * Receive a ping request message and send a ping reply to the process that sent the ping request
  *
@@ -414,6 +434,11 @@ void Process::receiveElection(Message *msg) {
 	if (initiator == this->pid) { // election stops, winner is determined
 		printf("Process %d: Process %d is the new coordinator\n", this->pid,
 				curWinner);
+		hasStartedCounting = 0;
+		hasSentData = 0;
+		dataReceivedCount = 0;
+		processCount = 0;
+
 		this->coordinatorPid = curWinner;
 		sendVictory(this->pid, curWinner);
 	} else {
@@ -441,8 +466,34 @@ void Process::receiveVictory(Message *msg) {
 			"Process %d: Received victory message, original sender is process %d, coordinator is process %d\n",
 			this->pid, originalSender, coordinator);
 	if (originalSender != this->pid) { // relay to next process
+		hasStartedCounting = 0;
+		hasSentData = 0;
+		dataReceivedCount = 0;
+		processCount = 0;
+
 		this->coordinatorPid = coordinator;
 		sendVictory(originalSender, coordinator);
 	}
 	puts("");
+}
+
+// TODO: write documentation
+
+void Process::receiveCount(Message *msg) {
+	int sender, coordinator, cnt;
+	TIME timestamp;
+	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &coordinator,
+			&cnt);
+	printf(
+			"Process %d: Received count message, original sender (coordinator) is process %d, cur count is %d\n\n",
+			this->pid, coordinator, cnt);
+	if (this->pid == this->coordinatorPid) { // stop message
+		if (coordinator != this->coordinatorPid) // the process is the current coordinator, but this message was sent by an old coordinator
+			return;
+		this->hasStartedCounting = 0;
+		this->hasReceivedCount = 1;
+		this->processCount = cnt;
+		// TODO: data will be sent
+	} else
+		sendCount(coordinator, cnt + 1);
 }
