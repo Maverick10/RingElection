@@ -74,7 +74,7 @@ void Process::listenToQueue() {
 			this->receiveElection(msg);
 		else if (msg->mtype == MSGTYPE_VICTORY)
 			this->receiveVictory(msg);
-		puts("");
+//		puts("");
 	}
 	delete msg;
 
@@ -226,9 +226,9 @@ void Process::receiveHeartbeat(Message *msg) {
 	sscanf(msg->mtext, "%d %lld", &sender, &timestamp);
 	this->lastHeartbeatReceivedTimestamp = timestamp;
 	this->lastHeartbeatSender = sender;
-	printf("Process %d: Received heartbeat from %d at %lld\n", this->pid,
-			sender, timestamp);
-	puts("");
+//	printf("Process %d: Received heartbeat from %d at %lld\n", this->pid,
+//			sender, timestamp);
+//	puts("");
 }
 
 void Process::receiveProcessDeath(Message *msg) {
