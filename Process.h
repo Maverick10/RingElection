@@ -4,11 +4,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <unistd.h>
+#include <sstream>
 #include "IPC.h"
 #include "Config.h"
 #include "Head.h"
 #include "Message.h"
 #include "MessageType.h"
+
+using namespace std;
 
 class Process {
 	// variables
@@ -27,10 +30,10 @@ class Process {
 
 	// data related params
 	bool hasStartedCounting;
-	bool hasReceivedCount;
 	bool hasSentData;
 	int dataReceivedCount;
 	int processCount;
+	int dataCurMin;
 	TIME lastSendDataTimestamp;
 
 	// control methods
@@ -42,6 +45,7 @@ class Process {
 	void lifeLoop();
 	bool isPrevProcessDead();
 	void initiateElection();
+	char* generateData();
 
 	// ipc-related methods
 	void sendChangeNext(int from, int to);
@@ -50,6 +54,7 @@ class Process {
 	void sendElection(int initiator, int curWinner);
 	void sendVictory(int originalSender, int winner);
 	void sendCount(int coordinator, int curCount);
+	void sendData(int coordinator, char *data);
 	void receivePingRequest(Message *msg);
 	void receiveChangeNext(Message *msg);
 	void receiveHeartbeat(Message *msg);
@@ -57,6 +62,7 @@ class Process {
 	void receiveElection(Message *msg);
 	void receiveVictory(Message *msg);
 	void receiveCount(Message *msg);
+	void receiveData(Message *msg);
 
 public:
 	Process();

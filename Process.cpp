@@ -104,6 +104,8 @@ void Process::listenToQueue() {
 			this->receiveVictory(msg);
 		else if (msg->mtype == MSGTYPE_COUNT)
 			this->receiveCount(msg);
+		else if (msg->mtype == MSGTYPE_DATA)
+			this->receiveData(msg);
 //		puts("");
 	}
 	delete msg;
@@ -140,7 +142,7 @@ bool Process::pingProcess(int pid) {
 		}
 	}
 	puts("");
-	// hasn't received a reply before the time ran out. process must be dead
+// hasn't received a reply before the time ran out. process must be dead
 	return 0;
 }
 
@@ -196,6 +198,7 @@ void Process::lifeLoop() {
 			if (!this->hasStartedCounting
 					&& getCurTime() - this->lastSendDataTimestamp
 							> DATA_SEND_GAP) {
+				this->dataCurMin = INT32_MAX;
 				this->lastSendDataTimestamp = getCurTime();
 				sendCount(this->pid, 0);
 			}
@@ -225,6 +228,20 @@ void Process::initiateElection() {
 	this->hasInitiatedElection = 1;
 	this->sendElection(this->pid, this->pid);
 	puts("");
+}
+
+// TODO: Write documentation
+
+char* Process::generateData() {
+	int totalSize = PROCESSSEGSZ * this->processCount;
+	stringstream ss;
+	while (totalSize--) {
+		int element = (rand() % ELEMENT_MAX) + 1;
+		ss << element << ' ';
+	}
+	char *ret = new char[MSGMAXSZ];
+	ss.getline(ret, MSGMAXSZ);
+	return ret;
 }
 
 /*
@@ -299,6 +316,7 @@ void Process::sendElection(int initiator, int curWinner) {
 			this->next);
 	sendMessage(this->next, msg);
 	puts("");
+	delete msg;
 }
 
 /*
@@ -316,6 +334,7 @@ void Process::sendVictory(int originalSender, int winner) {
 	sprintf(msg->mtext, "%d %lld %d %d", this->pid, getCurTime(),
 			originalSender, winner);
 	sendMessage(this->next, msg);
+	delete msg;
 }
 
 // TODO: Write documentation
@@ -326,6 +345,19 @@ void Process::sendCount(int coordinator, int curCount) {
 	sprintf(msg->mtext, "%d %lld %d %d", this->pid, getCurTime(), coordinator,
 			curCount);
 	sendMessage(this->next, msg);
+	delete msg;
+}
+
+// TODO: Write documentation
+
+void Process::sendData(int coordinator, char *data) {
+	Message *msg = new Message();
+	msg->mtype = MSGTYPE_DATA;
+	sprintf(msg->mtext, "%d %lld %d %s", this->pid, getCurTime(), coordinator,
+			data);
+	sendMessage(this->next, msg);
+	delete msg;
+	delete data;
 }
 
 /*
@@ -491,9 +523,36 @@ void Process::receiveCount(Message *msg) {
 		if (coordinator != this->coordinatorPid) // the process is the current coordinator, but this message was sent by an old coordinator
 			return;
 		this->hasStartedCounting = 0;
-		this->hasReceivedCount = 1;
 		this->processCount = cnt;
+		this->sendData(coordinator, generateData());
 		// TODO: data will be sent
 	} else
 		sendCount(coordinator, cnt + 1);
+}
+
+// TODO: Write documentation
+
+void Process::receiveData(Message *msg) {
+	stringstream ss(msg->mtext);
+	int sender, coordinator;
+	TIME timestamp;
+	ss >> sender >> timestamp >> coordinator;
+	printf(
+			"Process %d: Received data message, original sender (coordinator) is process %d Data received is ",
+			this->pid, coordinator);
+	int curMin = INT32_MAX, element;
+	for (int i = 0; i < PROCESSSEGSZ && (ss >> element); i++) {
+		printf("%d ", element);
+		curMin = min(curMin, element);
+	}
+	string restOfData, strElement;
+	while (ss >> strElement) {
+		restOfData += strElement, restOfData += ' ';
+		printf("%s ", strElement.c_str());
+	}
+	puts("");
+	printf("Process %d: Cur Min is %d\n\n", this->pid, curMin);
+	char *restOfDataCSTR = new char[MSGMAXSZ];
+	strcpy(restOfDataCSTR, restOfData.c_str());
+	sendData(coordinator, restOfDataCSTR);
 }

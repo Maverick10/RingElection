@@ -5,6 +5,10 @@ const int MAXPID = 1e6;
 
 const int MSGMAXSZ = 1024; // maximum size for message mtext used in message queues
 
+const int PROCESSSEGSZ = 5;	// number of elements that a single process deals with when coordinator sends data
+
+const int ELEMENT_MAX = 10;
+
 const char *const HEADSHM_FTOK_PATH = "./Process.cpp";
 const int HEADSHM_FTOK_PROJID = 5007;
 

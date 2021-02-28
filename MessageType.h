@@ -19,6 +19,10 @@
  * Victory <SENDER> <TIMESTAMP> <ORIGINALSENDER> <COORDINATOR>
  * -----------------------
  * Count <SENDER> <TIMESTAMP> <COORDINATOR> <COUNT>
+ * -----------------------
+ * Data <SENDER> <TIMESTAMP> <COORDINATOR> <DATA...>
+ * -----------------------*
+ * Result <SENDER> <TIMESTAMP> <COORDINATOR> <MIN>
  */
 
 #define MSGTYPE_CHANGENEXT 1
