@@ -106,6 +106,8 @@ void Process::listenToQueue() {
 			this->receiveCount(msg);
 		else if (msg->mtype == MSGTYPE_DATA)
 			this->receiveData(msg);
+		else if (msg->mtype == MSGTYPE_RESULT)
+			this->receiveResult(msg);
 //		puts("");
 	}
 	delete msg;
@@ -214,7 +216,7 @@ void Process::lifeLoop() {
 
 bool Process::isPrevProcessDead() {
 	return getCurTime() - this->lastHeartbeatReceivedTimestamp
-			> HEARTBEAT_TIMEOUT;
+			> HEARTBEAT_TIMEOUT && this->lastHeartbeatSender != -1;
 }
 
 /*
@@ -446,9 +448,11 @@ void Process::receiveProcessDeath(Message *msg) {
 	if (this->next == deadProcess) { // next process died, stop message
 		int oldNext = this->next;
 		this->next = originalSender;
+		appointAsHead(this->next);
 
-		if (oldNext == coordinatorPid) // if your next was the coordinator then election must be initiated bec coordinator is dead
+		if (oldNext == coordinatorPid) { // if your next was the coordinator then election must be initiated bec coordinator is dead
 			this->initiateElection();
+		}
 		printf("Process %d: changed next to %d\n", this->pid, this->next);
 	} else if (this->pid != originalSender
 			&& getCurTime() - timestamp <= MSG_TIMEOUT) // relay message to next process, stop message if it took a full lap
@@ -569,4 +573,29 @@ void Process::receiveData(Message *msg) {
 	strcpy(restOfDataCSTR, restOfData.c_str());
 	sendData(coordinator, restOfDataCSTR);
 	sendResult(coordinator, curMin);
+}
+
+// TODO: Write documentation
+
+void Process::receiveResult(Message *msg) {
+	int sender, coordinator, res;
+	TIME timestamp;
+	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &coordinator,
+			&res);
+	printf(
+			"Process %d: Received result message, sender %d, coordinator is process %d, result is %d\n\n",
+			this->pid, sender, coordinator, res);
+	if (this->pid == this->coordinatorPid) { // stop message
+		if (coordinator != this->coordinatorPid) // the process is the current coordinator, but this message was sent by an old coordinator
+			return;
+		this->dataReceivedCount++;
+		if (this->dataReceivedCount == this->processCount) { // received all results
+//			this->
+		}
+		this->hasStartedCounting = 0;
+		this->processCount = res;
+		this->sendData(coordinator, generateData());
+		// TODO: data will be sent
+	} else
+		sendCount(coordinator, res + 1);
 }

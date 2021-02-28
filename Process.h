@@ -64,6 +64,7 @@ class Process {
 	void receiveVictory(Message *msg);
 	void receiveCount(Message *msg);
 	void receiveData(Message *msg);
+	void receiveResult(Message *msg);
 
 public:
 	Process();
