@@ -339,7 +339,14 @@ void Process::sendVictory(int originalSender, int winner) {
 	delete msg;
 }
 
-// TODO: Write documentation
+/*
+ * Sends a count message to the next process
+ *
+ * param coordinator: pid of the coordinator process at the time the message was originated
+ * param curCount: current count of processes
+ *
+ * returns: void
+ */
 
 void Process::sendCount(int coordinator, int curCount) {
 	Message *msg = new Message();
@@ -350,7 +357,14 @@ void Process::sendCount(int coordinator, int curCount) {
 	delete msg;
 }
 
-// TODO: Write documentation
+/*
+ * Sends a count message to the next process
+ *
+ * param coordinator: pid of the coordinator process at the time the message was originated
+ * param data: data array to be sent to the next process
+ *
+ * returns: void
+ */
 
 void Process::sendData(int coordinator, char *data) {
 	Message *msg = new Message();
@@ -362,11 +376,17 @@ void Process::sendData(int coordinator, char *data) {
 	delete data;
 }
 
-// TODO: Write documentation
-
+/*
+ * Sends a result message to the next process
+ *
+ * param coordinator: pid of the coordinator process at the time the message was originated
+ * param curMin: current minimum calculated from the current process
+ *
+ * returns: void
+ */
 void Process::sendResult(int coordinator, int curMin) {
 	Message *msg = new Message();
-	msg->mtype = MSGTYPE_DATA;
+	msg->mtype = MSGTYPE_RESULT;
 	sprintf(msg->mtext, "%d %lld %d %d", this->pid, getCurTime(), coordinator,
 			curMin);
 	sendMessage(this->next, msg);
@@ -524,8 +544,14 @@ void Process::receiveVictory(Message *msg) {
 	puts("");
 }
 
-// TODO: write documentation
-
+/*
+ * Receives count message. current process increments the value by 1 and sends to the next process. if received by the coordinator, it constructs the data message and sends it to
+ * the next process
+ *
+ * param msg: Received message
+ *
+ * returns: void
+ */
 void Process::receiveCount(Message *msg) {
 	int sender, coordinator, cnt;
 	TIME timestamp;
@@ -545,7 +571,13 @@ void Process::receiveCount(Message *msg) {
 		sendCount(coordinator, cnt + 1);
 }
 
-// TODO: Write documentation
+/*
+ * Receives data message. current process takes out the part of the message that was intended to it, and sends the rest to the next process
+ *
+ * param msg: Received message
+ *
+ * returns: void
+ */
 
 void Process::receiveData(Message *msg) {
 	if (this->pid == this->coordinatorPid)
@@ -555,7 +587,7 @@ void Process::receiveData(Message *msg) {
 	TIME timestamp;
 	ss >> sender >> timestamp >> coordinator;
 	printf(
-			"Process %d: Received data message, sender %d, original sender (coordinator) is process %d Data received is ",
+			"Process %d: Received data message, sender %d, original sender (coordinator) is process %d Data received is { ",
 			this->pid, sender, coordinator);
 	int curMin = INT32_MAX, element;
 	for (int i = 0; i < PROCESSSEGSZ && (ss >> element); i++) {
@@ -567,7 +599,7 @@ void Process::receiveData(Message *msg) {
 		restOfData += strElement, restOfData += ' ';
 		printf("%s ", strElement.c_str());
 	}
-	puts("");
+	puts("}");
 	printf("Process %d: Cur Min is %d\n\n", this->pid, curMin);
 	char *restOfDataCSTR = new char[MSGMAXSZ];
 	strcpy(restOfDataCSTR, restOfData.c_str());
@@ -575,27 +607,40 @@ void Process::receiveData(Message *msg) {
 	sendResult(coordinator, curMin);
 }
 
-// TODO: Write documentation
+/*
+ * Receives result message. If current process is coordinator then it minimizes between the received value and the current minimum, if it received all results from all processes,
+ * it prints out the final result. If the current process is a normal process, then the message is relayed to the next process
+ *
+ * param msg: Received message
+ *
+ * returns: void
+ */
 
+// TODO: Write documentation
 void Process::receiveResult(Message *msg) {
 	int sender, coordinator, res;
 	TIME timestamp;
 	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &coordinator,
 			&res);
 	printf(
-			"Process %d: Received result message, sender %d, coordinator is process %d, result is %d\n\n",
+			"Process %d: Received result message, sender %d, coordinator is process %d, result is %d\n",
 			this->pid, sender, coordinator, res);
 	if (this->pid == this->coordinatorPid) { // stop message
 		if (coordinator != this->coordinatorPid) // the process is the current coordinator, but this message was sent by an old coordinator
 			return;
 		this->dataReceivedCount++;
+		this->dataCurMin = min(this->dataCurMin, res);
 		if (this->dataReceivedCount == this->processCount) { // received all results
-//			this->
+			this->hasStartedCounting = 0;
+			this->hasSentData = 0;
+			this->dataReceivedCount = 0;
+			this->processCount = 0;
+			printf(
+					"Process %d: Coordinator received all results from all processes. final minimum is %d\n",
+					this->pid, this->dataCurMin);
+			this->dataCurMin = INT32_MAX;
 		}
-		this->hasStartedCounting = 0;
-		this->processCount = res;
-		this->sendData(coordinator, generateData());
-		// TODO: data will be sent
 	} else
-		sendCount(coordinator, res + 1);
+		sendResult(coordinator, res);
+	puts("");
 }
