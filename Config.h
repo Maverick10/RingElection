@@ -10,7 +10,7 @@ const int PROCESSSEGSZ = 5;	// number of elements that a single process deals wi
 const int ELEMENT_MAX = 10;
 
 const char *const HEADSHM_FTOK_PATH = "./Process.cpp";
-const int HEADSHM_FTOK_PROJID = 5007;
+const int HEADSHM_FTOK_PROJID = 5008;
 
 const int PING_TIMEOUT = 1000;	// TODO: reduce timeout to reasonable value
 const int HEARTBEAT_TIMEOUT = 5000;	// timeout to detect process death

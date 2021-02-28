@@ -472,8 +472,8 @@ void Process::receiveElection(Message *msg) {
 	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &initiator,
 			&curWinner);
 	printf(
-			"Process %d: Received election message, initiator is process %d, curWinner is process %d\n",
-			this->pid, initiator, curWinner);
+			"Process %d: Received election message, sender %d, initiator is process %d, curWinner is process %d\n",
+			this->pid, sender, initiator, curWinner);
 	if (initiator == this->pid) { // election stops, winner is determined
 		printf("Process %d: Process %d is the new coordinator\n", this->pid,
 				curWinner);
@@ -506,8 +506,8 @@ void Process::receiveVictory(Message *msg) {
 	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &originalSender,
 			&coordinator);
 	printf(
-			"Process %d: Received victory message, original sender is process %d, coordinator is process %d\n",
-			this->pid, originalSender, coordinator);
+			"Process %d: Received victory message, sender %d, original sender is process %d, coordinator is process %d\n",
+			this->pid, sender, originalSender, coordinator);
 	if (originalSender != this->pid) { // relay to next process
 		hasStartedCounting = 0;
 		hasSentData = 0;
@@ -528,8 +528,8 @@ void Process::receiveCount(Message *msg) {
 	sscanf(msg->mtext, "%d %lld %d %d", &sender, &timestamp, &coordinator,
 			&cnt);
 	printf(
-			"Process %d: Received count message, original sender (coordinator) is process %d, cur count is %d\n\n",
-			this->pid, coordinator, cnt);
+			"Process %d: Received count message, sender %d, original sender (coordinator) is process %d, cur count is %d\n\n",
+			this->pid, sender, coordinator, cnt);
 	if (this->pid == this->coordinatorPid) { // stop message
 		if (coordinator != this->coordinatorPid) // the process is the current coordinator, but this message was sent by an old coordinator
 			return;
@@ -551,8 +551,8 @@ void Process::receiveData(Message *msg) {
 	TIME timestamp;
 	ss >> sender >> timestamp >> coordinator;
 	printf(
-			"Process %d: Received data message, original sender (coordinator) is process %d Data received is ",
-			this->pid, coordinator);
+			"Process %d: Received data message, sender %d, original sender (coordinator) is process %d Data received is ",
+			this->pid, sender, coordinator);
 	int curMin = INT32_MAX, element;
 	for (int i = 0; i < PROCESSSEGSZ && (ss >> element); i++) {
 		printf("%d ", element);
@@ -568,5 +568,5 @@ void Process::receiveData(Message *msg) {
 	char *restOfDataCSTR = new char[MSGMAXSZ];
 	strcpy(restOfDataCSTR, restOfData.c_str());
 	sendData(coordinator, restOfDataCSTR);
-//	sendResult(coordinator, curMin);
+	sendResult(coordinator, curMin);
 }
