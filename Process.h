@@ -55,6 +55,7 @@ class Process {
 	void sendVictory(int originalSender, int winner);
 	void sendCount(int coordinator, int curCount);
 	void sendData(int coordinator, char *data);
+	void sendResult(int coordinator, int curMin);
 	void receivePingRequest(Message *msg);
 	void receiveChangeNext(Message *msg);
 	void receiveHeartbeat(Message *msg);

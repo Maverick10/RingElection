@@ -360,6 +360,17 @@ void Process::sendData(int coordinator, char *data) {
 	delete data;
 }
 
+// TODO: Write documentation
+
+void Process::sendResult(int coordinator, int curMin) {
+	Message *msg = new Message();
+	msg->mtype = MSGTYPE_DATA;
+	sprintf(msg->mtext, "%d %lld %d %d", this->pid, getCurTime(), coordinator,
+			curMin);
+	sendMessage(this->next, msg);
+	delete msg;
+}
+
 /*
  * Receive a ping request message and send a ping reply to the process that sent the ping request
  *
@@ -533,6 +544,8 @@ void Process::receiveCount(Message *msg) {
 // TODO: Write documentation
 
 void Process::receiveData(Message *msg) {
+	if (this->pid == this->coordinatorPid)
+		return;
 	stringstream ss(msg->mtext);
 	int sender, coordinator;
 	TIME timestamp;
@@ -555,4 +568,5 @@ void Process::receiveData(Message *msg) {
 	char *restOfDataCSTR = new char[MSGMAXSZ];
 	strcpy(restOfDataCSTR, restOfData.c_str());
 	sendData(coordinator, restOfDataCSTR);
+//	sendResult(coordinator, curMin);
 }
