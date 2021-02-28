@@ -12,18 +12,18 @@
 
 class Process {
 	// variables
-	int pid;	// determines coordinator election
-	int next;
+	int pid;	// identifier of process. determines coordinator election
+	int next;	// pid of next process
 	Head *headShm; // shared memory segment to identify the head of the election ring
-	int semAddress;
-	bool isHead;
-	TIME lastHeartbeatReceivedTimestamp;
-	TIME lastHeartbeatSentTimestamp;
-	TIME lastSentDeathNoteTimestamp;
-	int lastHeartbeatSender;
-	int coordinatorPid;
-	bool hasInitiatedElection;
-	bool hasSentVictory;
+	int semAddress;	// semaphore address
+	bool isHead;	// boolean of whether current process is head of ring
+	TIME lastHeartbeatReceivedTimestamp;// timestamp of last heartbeat received
+	TIME lastHeartbeatSentTimestamp;	// timestamp of last heartbeat sent
+	TIME lastSentDeathNoteTimestamp;	// timestamp of last death note sent
+	int lastHeartbeatSender;// pid of last heartbeat sender (used to determine if that process is dead or not)
+	int coordinatorPid;	// pid of coordinator process
+	bool hasInitiatedElection;// boolean of whether current process initiated election
+	bool hasSentVictory;// boolean of whether current process sent victory message
 
 	// control methods
 	void initShm();

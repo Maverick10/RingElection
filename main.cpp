@@ -7,6 +7,4 @@ int main(int argc, char *argv[]) {
 //		Process *p = new Process(1);
 //	else
 	Process *p = new Process();
-	while (1) {
-	}
 }

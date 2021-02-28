@@ -1,5 +1,11 @@
 #include "Time.h"
 
+/*
+ * Gets current time in milliseconds
+ *
+ * returns: current time in milliseconds
+ */
+
 TIME getCurTime() {
 	struct timeval tp;
 	gettimeofday(&tp, NULL);

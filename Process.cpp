@@ -1,5 +1,9 @@
 #include "Process.h"
 
+/*
+ * Constructs the Process object and begins the Process's lifecycle
+ */
+
 Process::Process() {
 	this->pid = (rand() % MAXPID) + 1;	// pid is generated randomly
 	this->isHead = 0;
@@ -19,9 +23,21 @@ Process::Process() {
 Process::~Process() {
 }
 
+/*
+ * Gets pid of process
+ *
+ * returns: pid of process
+ */
+
 int Process::getPid() {
 	return this->pid;
 }
+
+/*
+ * Initializes shared memory and semaphores
+ *
+ * returns: void
+ */
 
 void Process::initShm() {
 	this->headShm = getShm(HEADSHM_FTOK_PATH, HEADSHM_FTOK_PROJID,
@@ -30,6 +46,12 @@ void Process::initShm() {
 	this->semAddress = getSem(HEADSHM_FTOK_PATH, HEADSHM_FTOK_PROJID, 1);
 	puts("");
 }
+
+/*
+ * Letting process enter the ring topology
+ *
+ * returns: void
+ */
 
 void Process::enterRing() {
 	Head head = readFromShm(semAddress, this->headShm);	// head is not to be confused with coordinator, they are two different concepts. although they can be the same process
@@ -53,6 +75,12 @@ void Process::enterRing() {
 	}
 	puts("");
 }
+
+/*
+ * Listening to message queues to see if there's any messages to be received
+ *
+ * returns: void
+ */
 
 void Process::listenToQueue() {
 
@@ -80,6 +108,14 @@ void Process::listenToQueue() {
 
 }
 
+/*
+ * Send a message to another process to check whether it's alive or dead
+ *
+ * param pid: pid of the process in question
+ *
+ * returns: true if process is alive, false otherwise
+ */
+
 bool Process::pingProcess(int pid) {
 	printf("Process %d: Pinging pid %d\n", this->pid, pid);
 	Message *msg = new Message();
@@ -106,6 +142,14 @@ bool Process::pingProcess(int pid) {
 	return 0;
 }
 
+/*
+ * Make process the head of the ring so that all new processes enter the ring through it
+ *
+ * param next: pid of the next process
+ *
+ * returns: void
+ */
+
 void Process::appointAsHead(int next) {
 	puts("wrote to shm");
 //	std::cout << "Shm is clean, wrote to shm\n";
@@ -117,6 +161,13 @@ void Process::appointAsHead(int next) {
 	this->next = next;
 	puts("");
 }
+
+/*
+ * Lifecycle of the process. Infinite loop
+ *
+ * returns: void
+ *
+ */
 
 void Process::lifeLoop() {
 	while (1) {
@@ -142,10 +193,22 @@ void Process::lifeLoop() {
 	}
 }
 
+/*
+ * A check of whether the process which has the current process as next is aiive or not
+ *
+ * returns: true if the prev process is dead, false otherwise
+ */
+
 bool Process::isPrevProcessDead() {
 	return getCurTime() - this->lastHeartbeatReceivedTimestamp
 			> HEARTBEAT_TIMEOUT;
 }
+
+/*
+ * Initiate election. Sends election message through the ring
+ *
+ * returns: void
+ */
 
 void Process::initiateElection() {
 	printf("Process %d: initiated election\n", this->pid);
@@ -154,6 +217,15 @@ void Process::initiateElection() {
 	puts("");
 }
 
+/*
+ * Sends a message to the process with pid (from) to change its next pointer to the pid (to)
+ *
+ * param from: pid of the process to change its next pointer
+ * param to: pid of the process to point to
+ *
+ * returns: void
+ */
+
 void Process::sendChangeNext(int from, int to) {
 	Message *msg = new Message();
 	msg->mtype = MSGTYPE_CHANGENEXT;
@@ -161,6 +233,12 @@ void Process::sendChangeNext(int from, int to) {
 	sendMessage(from, msg);
 	delete msg;
 }
+
+/*
+ * Sends a heartbeat message to next process to inform it that the current process is alive
+ *
+ * returns: void
+ */
 
 void Process::sendHeartbeat() {
 	TIME curTime = getCurTime();
@@ -174,6 +252,16 @@ void Process::sendHeartbeat() {
 	}
 }
 
+/*
+ * Sends message to the next process that a process is dead
+ *
+ * param originalSender: pid of the first process to discover the dead process (needed to stop the message from going around the ring forever)
+ * param t: timestamp of death
+ * param deadProcess: pid of the deadProcess
+ *
+ * returns: void
+ */
+
 void Process::sendProcessDeath(int originalSender, TIME t, int deadProcess) {
 	Message *msg = new Message();
 	msg->mtype = MSGTYPE_PROCESSDEATH;
@@ -182,6 +270,15 @@ void Process::sendProcessDeath(int originalSender, TIME t, int deadProcess) {
 	sendMessage(this->next, msg);
 	delete msg;
 }
+
+/*
+ * Sends election message to next process
+ *
+ * param initiator: pid of the process that initiated election
+ * param curWinner: maximum pid of the processes that received the election message so far (used to determine the winner)
+ *
+ * returns: void
+ */
 
 void Process::sendElection(int initiator, int curWinner) {
 	Message *msg = new Message();
@@ -194,6 +291,15 @@ void Process::sendElection(int initiator, int curWinner) {
 	puts("");
 }
 
+/*
+ * Sends a victory message to the next process
+ *
+ * param originalSender: pid of the process that announced the election victory
+ * param winner: pid of the new coordinator
+ *
+ * returns: void
+ */
+
 void Process::sendVictory(int originalSender, int winner) {
 	Message *msg = new Message();
 	msg->mtype = MSGTYPE_VICTORY;
@@ -201,6 +307,14 @@ void Process::sendVictory(int originalSender, int winner) {
 			originalSender, winner);
 	sendMessage(this->next, msg);
 }
+
+/*
+ * Receive a ping request message and send a ping reply to the process that sent the ping request
+ *
+ * param msg: pointer to message object that contains the received message
+ *
+ * returns: void
+ */
 
 void Process::receivePingRequest(Message *msg) {
 	int pingSender;
@@ -212,6 +326,14 @@ void Process::receivePingRequest(Message *msg) {
 	delete pingReply;
 }
 
+/*
+ * Receive a change next message and changes next process accordingly
+ *
+ * param msg: pointer to message object that contains the received message
+ *
+ * returns: void
+ */
+
 void Process::receiveChangeNext(Message *msg) {
 	int newNext;
 	sscanf(msg->mtext, "%d %d %d", &newNext, &newNext, &newNext);// only interested in the last value
@@ -221,6 +343,14 @@ void Process::receiveChangeNext(Message *msg) {
 	printf("Process %d: Changed next to process %d\n", this->pid, this->next);
 	puts("");
 }
+
+/*
+ * Receives a heartbeat message and update timestamp of last received heartbeat as well as the last sending heartbeat process
+ *
+ * param msg: pointer to message object that contains the received message
+ *
+ * returns: void
+ */
 
 void Process::receiveHeartbeat(Message *msg) {
 	int sender;
@@ -232,6 +362,15 @@ void Process::receiveHeartbeat(Message *msg) {
 //			sender, timestamp);
 //	puts("");
 }
+
+/*
+ * Receive a process death message. Initiates election if the dead process is the coordinator. Updates next process if the dead process was indeed the next one. Relays message to
+ * next process if need be.
+ *
+ * param msg: pointer to message object that contains the received message
+ *
+ * returns: void
+ */
 
 void Process::receiveProcessDeath(Message *msg) {
 	int sender, deadProcess, originalSender;
@@ -256,6 +395,14 @@ void Process::receiveProcessDeath(Message *msg) {
 	puts("");
 }
 
+/*
+ * Receives election message. Relays message if need be. Stops message if the current process was the initiator and then send a victory message depending on the winner.
+ *
+ * param msg: pointer to message object that contains the received message
+ *
+ * returns: void
+ */
+
 void Process::receiveElection(Message *msg) {
 	int sender, initiator, curWinner;
 	TIME timestamp;
@@ -275,6 +422,15 @@ void Process::receiveElection(Message *msg) {
 	}
 	puts("");
 }
+
+/*
+ * Receives victory message. Relays message if need be. Stops message if the current process was the original sender. Updates coordinator value depending on the value of coordinator
+ * in the message
+ *
+ * param msg: pointer to message object that contains the received message
+ *
+ * returns: void
+ */
 
 void Process::receiveVictory(Message *msg) {
 	int sender, originalSender, coordinator;

@@ -6,13 +6,16 @@
 #include <sys/sem.h>
 #include <cstdio>
 
-union Semun
-{
-    int val;               /* value for SETVAL */
-    struct semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
-    unsigned short *array; /* array for GETALL & SETALL */
-    struct seminfo *__buf; /* buffer for IPC_INFO */
-    void *__pad;
+/*
+ * Union that's used in semaphore lock/unlock
+ */
+
+union Semun {
+	int val; /* value for SETVAL */
+	struct semid_ds *buf; /* buffer for IPC_STAT & IPC_SET */
+	unsigned short *array; /* array for GETALL & SETALL */
+	struct seminfo *__buf; /* buffer for IPC_INFO */
+	void *__pad;
 };
 
 int getSem(const char *path, int projID, int size);
