@@ -11,7 +11,8 @@
 #include "MessageType.h"
 
 class Process {
-	int pid;
+	// variables
+	int pid;	// determines coordinator election
 	int next;
 	Head *headShm; // shared memory segment to identify the head of the election ring
 	int semAddress;
@@ -24,6 +25,7 @@ class Process {
 	bool hasInitiatedElection;
 	bool hasSentVictory;
 
+	// control methods
 	void initShm();
 	void enterRing();
 	void listenToQueue();
@@ -33,6 +35,7 @@ class Process {
 	bool isPrevProcessDead();
 	void initiateElection();
 
+	// ipc-related methods
 	void sendChangeNext(int from, int to);
 	void sendHeartbeat();
 	void sendProcessDeath(int originalSender, TIME t, int deadProcess);

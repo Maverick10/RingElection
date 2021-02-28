@@ -1,18 +1,18 @@
 #include "Process.h"
 
 Process::Process() {
-	this->pid = (rand() % MAXPID) + 1;
+	this->pid = (rand() % MAXPID) + 1;	// pid is generated randomly
 	this->isHead = 0;
 	this->lastHeartbeatSender = -1;
 	this->lastHeartbeatReceivedTimestamp = this->lastHeartbeatSentTimestamp =
 			this->lastSentDeathNoteTimestamp = 0;
 	printf("PID = %d\n", this->pid);
-	this->initShm();
+	this->initShm();// gets a pointer to the shared memory holding the head process
 
-	this->enterRing();
+	this->enterRing();	// enters the process ring
 //	printf("entered ring\n");
-	this->initiateElection();
-	this->lifeLoop();
+	this->initiateElection();// new processes always initiate election when created
+	this->lifeLoop();// process stays inside loop forever until forcefully killed
 	puts("");
 }
 
@@ -36,7 +36,7 @@ void Process::enterRing() {
 	if (head.id == 0) {	// shm is clean, this is the first process
 		this->appointAsHead(this->pid);
 	} else {
-		if (this->pingProcess(head.id)) {
+		if (this->pingProcess(head.id)) {// if shm has a head, ping the head to check if it's alive or not
 			printf("Process %d: Process %d is alive and well\n", this->pid,
 					head.id);
 			this->sendChangeNext(head.id, this->pid); // this->next = head.next, head.id.next = this->pid
@@ -46,7 +46,7 @@ void Process::enterRing() {
 					head.next);
 			this->appointAsHead(head.next);
 			this->sendProcessDeath(this->pid, getCurTime(), head.id);
-		} else {
+		} else { // head and next of head are dead. so this must be a new ring
 			printf("Process %d: All dead\n", this->pid);
 			this->appointAsHead(this->pid);
 		}
@@ -102,6 +102,7 @@ bool Process::pingProcess(int pid) {
 		}
 	}
 	puts("");
+	// hasn't received a reply before the time ran out. process must be dead
 	return 0;
 }
 
@@ -121,12 +122,13 @@ void Process::lifeLoop() {
 	while (1) {
 		this->listenToQueue();
 //		sleep(1);	// debugging
-		this->sendHeartbeat();
+		this->sendHeartbeat();	// to tell next process that this pid is alive
 		if (this->isPrevProcessDead()) {
 
 			TIME timestamp = getCurTime();
 			if (timestamp - this->lastSentDeathNoteTimestamp
-					> DEATHNOTE_SEND_GAP) {
+					> DEATHNOTE_SEND_GAP) {	// to ensure that death msg is sent to all processes in the ring
+											// also to not to flood the message queues with the same message
 				if (this->next != this->lastHeartbeatSender) {
 					sendProcessDeath(this->pid, timestamp,
 							this->lastHeartbeatSender);
@@ -162,7 +164,7 @@ void Process::sendChangeNext(int from, int to) {
 
 void Process::sendHeartbeat() {
 	TIME curTime = getCurTime();
-	if (curTime - this->lastHeartbeatSentTimestamp > HEARTBEAT_SEND_GAP) {
+	if (curTime - this->lastHeartbeatSentTimestamp > HEARTBEAT_SEND_GAP) {// check is to prevent message queue flood
 		Message *msg = new Message();
 		msg->mtype = MSGTYPE_HEARTBEAT;
 		sprintf(msg->mtext, "%d %lld", this->pid, curTime);
@@ -206,16 +208,16 @@ void Process::receivePingRequest(Message *msg) {
 	Message *pingReply = new Message();
 	pingReply->mtype = MSGTYPE_PINGREPLY;
 	sprintf(pingReply->mtext, "%d %lld", this->pid, getCurTime());
-	sendMessage(pingSender, pingReply);
+	sendMessage(pingSender, pingReply);	// when you receive a ping request you must respond with a ping reply
 	delete pingReply;
 }
 
 void Process::receiveChangeNext(Message *msg) {
 	int newNext;
-	sscanf(msg->mtext, "%d %d %d", &newNext, &newNext, &newNext);
+	sscanf(msg->mtext, "%d %d %d", &newNext, &newNext, &newNext);// only interested in the last value
 	this->next = newNext;
 	if (this->isHead)
-		this->appointAsHead(this->next);
+		this->appointAsHead(this->next);// updates shm with head.id = pid and head.next = this->next
 	printf("Process %d: Changed next to process %d\n", this->pid, this->next);
 	puts("");
 }
@@ -243,7 +245,7 @@ void Process::receiveProcessDeath(Message *msg) {
 		int oldNext = this->next;
 		this->next = originalSender;
 
-		if (oldNext == coordinatorPid)
+		if (oldNext == coordinatorPid) // if your next was the coordinator then election must be initiated bec coordinator is dead
 			this->initiateElection();
 		printf("Process %d: changed next to %d\n", this->pid, this->next);
 	} else if (this->pid != originalSender
@@ -267,9 +269,9 @@ void Process::receiveElection(Message *msg) {
 				curWinner);
 		this->coordinatorPid = curWinner;
 		sendVictory(this->pid, curWinner);
-		// TODO: send victory
 	} else {
-		sendElection(initiator, max(curWinner, this->pid));
+		sendElection(initiator, max(curWinner, this->pid));	// election message relayed
+															// maximizing between curWinner and this->pid ensures that the process with the highest pid always is curWinner
 	}
 	puts("");
 }

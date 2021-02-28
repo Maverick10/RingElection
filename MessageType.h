@@ -1,10 +1,3 @@
-/*
- * MessageType.h
- *
- *  Created on: Feb 27, 2021
- *      Author: maverick
- */
-
 #ifndef MESSAGETYPE_H_
 #define MESSAGETYPE_H_
 

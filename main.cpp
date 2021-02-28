@@ -1,7 +1,8 @@
 #include "Process.h"
 int main(int argc, char *argv[]) {
 
-	srand(time(NULL));
+	// main is used only to create a new process
+	srand(time(NULL));	// seed
 //	if (argc > 1)
 //		Process *p = new Process(1);
 //	else

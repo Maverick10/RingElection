@@ -1,36 +1,31 @@
 #include "IPC.h"
 
-Head* getShm(const char *path, int projID, int size) {
+Head* getShm(const char *path, int projID, int size) {	// returns shm address
 	int key = ftok(path, projID);
 	printf("Key is %d\n", key);
 	int id = shmget(key, size, IPC_CREAT | 0666);
-	std::cout << "SHM ID " << id << std::endl;
+	printf("SHM ID %d\n", id);
 	Head *address = (Head*) shmat(id, NULL, 0);
-	// std::cout << "number of attached processes to shared memory " << buf.shm_nattch << std::endl;
 	return address;
 }
 
 Head readFromShm(int semAddress, Head *shm) {
 	Head val;
-	semLock(semAddress);
-	// std::cout << "SEM LOCKED " << shm << std::endl;
+	semLock(semAddress);// locks semaphore before reading from shm to ensure mutual exclusion
 	val = *shm;
-	// std::cout << "BEFORE SEM UNLOCKED " << std::endl;
-
-	semUnlock(semAddress);
-	// std::cout << "SEM UNLOCKED " << std::endl;
+	semUnlock(semAddress);	// unlocks semaphore after reading from shm
 
 	return val;
 }
 
 void writeToShm(int semAddr, Head src, Head *dst) {
-	semLock(semAddr);
+	semLock(semAddr);// locks semaphore before writing to shm to ensure mutual exclusion
 	*dst = src;
-	semUnlock(semAddr);
+	semUnlock(semAddr);	// locks semaphore after writing to shm
 }
 
 void sendMessage(int receiver, Message *msg) {
-	int msgqid = msgget(receiver, 0600 | IPC_CREAT);
+	int msgqid = msgget(receiver, 0600 | IPC_CREAT);// using message queues, create it if it doesn't exists
 	if (msgqid < 0) {
 		printf("failed to open message queue. return value = %d\n", msgqid);
 	}
@@ -40,12 +35,13 @@ void sendMessage(int receiver, Message *msg) {
 }
 
 int receiveMessage(int receiver, int msgtype, Message *msg) {
-	int msgqid = msgget(receiver, 0600 | IPC_CREAT);
+	int msgqid = msgget(receiver, 0600 | IPC_CREAT);// using message queues, create it if it doesn't exists
 	if (msgqid < 0) {
 		printf("failed to open message queue. return value = %d\n", msgqid);
 		return -1;
 	}
-	int retVal = msgrcv(msgqid, msg, sizeof(msg->mtext), msgtype, IPC_NOWAIT | MSG_NOERROR);
+	int retVal = msgrcv(msgqid, msg, sizeof(msg->mtext), msgtype,
+	IPC_NOWAIT | MSG_NOERROR);// with options to not wait for messages, and if there's an error not to give it back
 //	while (retVal >= 0)
 //		retVal = msgrcv(msgqid, msg, sizeof(msg->mtext), msgtype, IPC_NOWAIT);
 //	printf("errno is %d\n", errno);

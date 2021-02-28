@@ -1,11 +1,11 @@
 #ifndef MESSAGE_H_
 #define MESSAGE_H_
 
-#include "Time.h"
+#include "Config.h"
 
 struct Message {
 	long mtype;
-	char mtext[1024];
+	char mtext[MSGMAXSZ];
 };
 
 #endif /* MESSAGE_H_ */
